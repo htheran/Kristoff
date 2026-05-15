@@ -1,11 +1,7 @@
 
 // v=200: Persistent banner to confirm our changes are LOADED
 setTimeout(() => {
-    if (typeof Toast !== 'undefined') {
-        Toast.info("🚀 MOTOR DE HERENCIA v200 CARGADO", 30000);
-    } else {
-        alert("🚀 MOTOR DE HERENCIA v200 CARGADO (Falló Toast)");
-    }
+    console.log("🚀 HERITAGE ENGINE v200 LOADED");
 }, 500);
 
 // Initialize app
@@ -765,7 +761,9 @@ async function getPpkProfiles() {
             .map(c => ({
                 id: c.id,
                 name: c.name,
-                key: c.ssh_key || c.password // key is stored in ssh_key field
+                user: c.ssh_user,
+                key: c.ssh_key || c.password, // key is stored in ssh_key field
+                password: c.ssh_pass
             }));
 
         // Initial Migration: Check localStorage one last time
@@ -792,19 +790,22 @@ async function savePpkProfile(profile) {
         if (profile.id && typeof profile.id === 'number' && profile.id > 1000000000) {
             // It's a temporary local ID, create new in backend
             const res = await window.api.createCredential(
-                companyId, profile.name, 'ppk', 'ppk', 'N/A', '_PPK_PROFILE_', 'SSH Key Profile', [], true, null, profile.key
+                companyId, profile.name, 'ppk', 'ppk', 'N/A', '_PPK_PROFILE_', 'SSH Key Profile', [], true, null, 
+                profile.key, profile.password, null, profile.user
             );
             if (!res.success) throw new Error(res.error);
         } else if (profile.id) {
             // Update existing
             const res = await window.api.updateCredential(
-                companyId, profile.id, profile.name, 'ppk', 'ppk', 'N/A', '_PPK_PROFILE_', 'SSH Key Profile', [], true, null, profile.key
+                companyId, profile.id, profile.name, 'ppk', 'ppk', 'N/A', '_PPK_PROFILE_', 'SSH Key Profile', [], true, null, 
+                profile.key, profile.password, null, profile.user
             );
             if (!res.success) throw new Error(res.error);
         } else {
             // New one
             const res = await window.api.createCredential(
-                companyId, profile.name, 'ppk', 'ppk', 'N/A', '_PPK_PROFILE_', 'SSH Key Profile', [], true, null, profile.key
+                companyId, profile.name, 'ppk', 'ppk', 'N/A', '_PPK_PROFILE_', 'SSH Key Profile', [], true, null, 
+                profile.key, profile.password, null, profile.user
             );
             if (!res.success) throw new Error(res.error);
         }
@@ -1456,7 +1457,7 @@ async function handleCreateSubmit(e) {
                 return;
             }
 
-            savePpkProfile({ 
+            await savePpkProfile({ 
                 id: id ? parseInt(id) : null,
                 name, 
                 user, 
@@ -1572,6 +1573,26 @@ function renderCompanies(companies) {
         }
         DOM.companiesList.appendChild(item);
     });
+    updateSetupGuide();
+}
+
+function updateSetupGuide() {
+    const guide = document.getElementById('setupGuideMessage');
+    if (!guide) return;
+    
+    const hasCompanies = AppState.companies && AppState.companies.length > 0;
+    const hasBranches = AppState.branches && AppState.branches.length > 0;
+    
+    // Show guide if no companies OR if a company is selected but has no branches
+    if (!hasCompanies) {
+        guide.style.display = 'block';
+        guide.innerHTML = '<i class="fas fa-info-circle"></i> You must first create your company and branch.';
+    } else if (AppState.selectedCompany && !hasBranches) {
+        guide.style.display = 'block';
+        guide.innerHTML = '<i class="fas fa-info-circle"></i> You must now create your branch for this company.';
+    } else {
+        guide.style.display = 'none';
+    }
 }
 
 async function selectCompany(company) {
@@ -1643,6 +1664,7 @@ async function loadBranches(companyId) {
 }
 
 function renderBranches(branches) {
+    AppState.branches = branches;
     DOM.branchesList.innerHTML = '';
     const branchCountEl = document.getElementById('branchCountTotal');
     if (branchCountEl) branchCountEl.textContent = branches.length > 0 ? `(${branches.length})` : '';
@@ -1682,6 +1704,7 @@ function renderBranches(branches) {
         }
         DOM.branchesList.appendChild(item);
     });
+    updateSetupGuide();
 }
 
 async function handleDeleteBranch(branch) {
@@ -1698,6 +1721,7 @@ async function handleDeleteBranch(branch) {
 
 function selectBranch(branch) {
     AppState.selectedBranch = branch;
+    AppState.selectedGroup = null; // v=201: Clear group filter when selecting a branch
     closeDetailsPanel();
     
     document.querySelectorAll('#branchesList .tree-item').forEach(item => {
@@ -1705,6 +1729,9 @@ function selectBranch(branch) {
         if (item.dataset.branchId == branch.id) item.classList.add('active');
     });
     
+    // Clear active state from groups as well
+    document.querySelectorAll('#sidebarGroupsList .tree-item').forEach(item => item.classList.remove('active'));
+
     DOM.panelTitle.textContent = branch.name;
     DOM.panelSubtitle.textContent = `Credentials for ${branch.name}`;
     DOM.breadcrumb.textContent = `${AppState.selectedCompany?.name || 'Company'} / ${branch.name}`;
@@ -1910,6 +1937,18 @@ function filterCredentials() {
     if (titleEl) {
         const baseTitle = AppState.selectedGroup || (AppState.selectedBranch ? AppState.selectedBranch.name : (AppState.selectedCompany ? AppState.selectedCompany.name : 'Credentials'));
         titleEl.innerHTML = `${baseTitle} <span style="font-size:14px; font-weight:normal; color:#7f8c8d;">(${filtered.length} items)</span>`;
+        
+        // Update Breadcrumb
+        if (DOM.breadcrumb) {
+            const companyName = AppState.selectedCompany?.name || 'Company';
+            if (AppState.selectedGroup) {
+                DOM.breadcrumb.textContent = `${companyName} / Groups / ${AppState.selectedGroup}`;
+            } else if (AppState.selectedBranch) {
+                DOM.breadcrumb.textContent = `${companyName} / ${AppState.selectedBranch.name}`;
+            } else {
+                DOM.breadcrumb.textContent = `${companyName} / All`;
+            }
+        }
     }
 
     const deployKeyGroupBtn = document.getElementById('deployKeyGroupBtn');
@@ -2078,7 +2117,14 @@ function addGroupItem(fullPath, groupValue, isActive) {
 
     item.onclick = (e) => {
         if (e.target.closest('.delete-group-btn')) return;
+        if (e.target.closest('.share-group-btn')) return;
+        
         AppState.selectedGroup = groupValue;
+        AppState.selectedBranch = null; // v=201: Clear branch filter when selecting a group
+        
+        // Clear active state from branches
+        document.querySelectorAll('#branchesList .tree-item').forEach(item => item.classList.remove('active'));
+        
         renderSidebarGroups();
         filterCredentials();
     };
@@ -2114,6 +2160,21 @@ async function handleRotatePassword(credential) {
     try {
         const savedLength = parseInt(localStorage.getItem('kristoff_gen_length')) || 24;
         const generatedPass = typeof window.generateSecurePassword === 'function' ? window.generateSecurePassword(savedLength) : Math.random().toString(36).slice(-24);
+        // v=201: PPK Profile Fallback for rotation
+        let ssh_user = credential.ssh_user;
+        let ssh_pass = credential.ssh_pass;
+        let ssh_key = credential.ssh_key;
+
+        if (!ssh_key && typeof isCredentialPpkEnabled === 'function' && isCredentialPpkEnabled(credential)) {
+            const profiles = await getPpkProfiles();
+            const profile = (profiles && profiles.length > 0) ? profiles[0] : null;
+            if (profile) {
+                ssh_key = profile.key;
+                if (!ssh_user) ssh_user = profile.user;
+                if (!ssh_pass) ssh_pass = profile.password;
+            }
+        }
+
         const payload = {
             host: credential.host,
             username: credential.username,
@@ -2121,11 +2182,11 @@ async function handleRotatePassword(credential) {
             new_password: generatedPass,
             // v=172: Critical Fix - If we are root, the elevation password IS the main password
             root_pass: (credential.username === 'root') ? credential.password : (credential.root_pass || credential.password),
-            ssh_user: credential.ssh_user || null,
-            ssh_username: credential.ssh_user || null, // Alias for backend compatibility
-            ssh_pass: credential.ssh_pass || null,
-            ssh_key_pass: credential.ssh_pass || null, // Alias for encrypted keys
-            ssh_key: credential.ssh_key || null
+            ssh_user: ssh_user || null,
+            ssh_username: ssh_user || null, // Alias for backend compatibility
+            ssh_pass: ssh_pass || null,
+            ssh_key_pass: ssh_pass || null, // Alias for encrypted keys
+            ssh_key: ssh_key || null
         };
         
         const res = await window.api.rotatePassword({ 
@@ -2181,16 +2242,31 @@ async function handleRotateServicePassword(credential, serviceIndex) {
         return;
     }
 
-    if (!confirm(`¿Estás seguro de que deseas ROTAR la contraseña del servicio '${svc.name}'?`)) return;
+    if (!confirm(`Are you sure you want to ROTATE the password for service '${svc.name}'?`)) return;
 
     AppState.isRotating = true;
-    Toast.info(`Iniciando rotación de servicio v195 (Promoted Mode)...`, 12000);
+    Toast.info(`Starting service rotation (Promoted Mode)...`, 12000);
 
     const companyId = AppState.selectedCompany?.id || credential.company_id || 1;
 
     try {
         const generatedPass = typeof window.generateSecurePassword === 'function' ? window.generateSecurePassword(16) : Math.random().toString(36).slice(-10);
         
+        // v=201: PPK Profile Fallback for service rotation
+        let ssh_user = credential.ssh_user;
+        let ssh_pass = credential.ssh_pass;
+        let ssh_key = credential.ssh_key;
+
+        if (!ssh_key && typeof isCredentialPpkEnabled === 'function' && isCredentialPpkEnabled(credential)) {
+            const profiles = await getPpkProfiles();
+            const profile = (profiles && profiles.length > 0) ? profiles[0] : null;
+            if (profile) {
+                ssh_key = profile.key;
+                if (!ssh_user) ssh_user = profile.user;
+                if (!ssh_pass) ssh_pass = profile.password;
+            }
+        }
+
         // v=195: Promoted-Service Logic
         // We inject the service target into the 'notes' field and top-level username
         const payload = {
@@ -2199,11 +2275,11 @@ async function handleRotateServicePassword(credential, serviceIndex) {
             service_username: svc.username, // Alias for backend
             new_password: generatedPass,
             
-            ssh_user: credential.ssh_user,
-            ssh_username: credential.ssh_user, // Alias
-            ssh_pass: credential.ssh_pass,
-            ssh_key_pass: credential.ssh_pass, // Alias for encrypted keys
-            ssh_key: credential.ssh_key,
+            ssh_user: ssh_user,
+            ssh_username: ssh_user, // Alias
+            ssh_pass: ssh_pass,
+            ssh_key_pass: ssh_pass, // Alias for encrypted keys
+            ssh_key: ssh_key,
             root_pass: (credential.username === 'root') ? credential.password : (credential.root_pass || credential.password),
             
             rotation_target: 'service',
@@ -2221,17 +2297,17 @@ async function handleRotateServicePassword(credential, serviceIndex) {
         });
 
         if (res.success) {
-            Toast.success(`¡Rotación de ${svc.name} completada!`);
+            Toast.success(`Rotation of ${svc.name} completed!`);
             svc.password = generatedPass;
             await loadCredentials(companyId); 
             const updatedCred = AppState.allCredentials.find(c => c.id == credential.id) || credential;
             if (updatedCred) showDetailsPanel(updatedCred);
         } else {
             console.error('[Service Rotation] Failed:', res.error);
-            Toast.error(`Fallo en rotación de servicio: ${res.error}`, 15000);
+            Toast.error(`Service rotation failed: ${res.error}`, 15000);
         }
     } catch (err) {
-        console.error('v195 Rotation failed:', err);
+        console.error('Service rotation failed:', err);
         Toast.error("Error: " + err.message);
     } finally {
         AppState.isRotating = false;
@@ -3800,13 +3876,13 @@ async function deleteAllInCurrentView() {
         return;
     }
 
-    const password = prompt('SECURITY CHALLENGE: Please enter the ADMINISTRATOR login password to authorize this mass deletion:');
+    const password = prompt('AUTHORIZATION REQUIRED: Enter ADMINISTRATOR password to confirm MASS deletion:');
     if (!password) return;
 
-    // Verify password by attempting a health check or a mini-login
+    // Verify password by attempting a login check
     const verifyRes = await window.api.login(AppState.currentUser.email, password);
     if (!verifyRes.success) {
-        Toast.error('Invalid password. Mass deletion aborted for security reasons.');
+        Toast.error('Incorrect password. Operation cancelled for security reasons.');
         return;
     }
 
