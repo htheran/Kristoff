@@ -1804,8 +1804,7 @@ async function loadCredentials(companyId) {
             }
 
             AppState.allCredentials = items;
-            console.log(`[Sync] Loaded ${items.length} total credentials for company ${companyId}`);
-            if (items.length > 0) console.log('[Sync] Raw Sample:', items[0]);
+            console.log(`📍 [DEBUG] Loaded ${items.length} credentials. Groups found:`, [...new Set(items.map(c => c.group_name))]);
             
             renderSidebarGroups();
             filterCredentials();
@@ -1898,11 +1897,14 @@ function filterCredentials() {
         filtered = AppState.allCredentials.filter(c => !c.permission_level); 
     } else if (AppState.selectedGroup && AppState.selectedGroup !== 'All') {
         const sel = AppState.selectedGroup;
+        console.log(`📍 [DEBUG] Filtering by group: "${sel}"`);
         filtered = filtered.filter(cred => {
             const g = cred.group_name || 'General';
-            // Match exact group OR nested subgroup (e.g. "UPB" matches "UPB/MEDELLIN")
-            return g === sel || g.startsWith(sel + '/');
+            const match = (g === sel || g.startsWith(sel + '/'));
+            if (match) console.log(`   ✅ Match: ${cred.name} (${g})`);
+            return match;
         });
+        console.log(`   📊 Total filtered: ${filtered.length}`);
     }
 
     if (searchTerm) {
