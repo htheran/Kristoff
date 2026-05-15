@@ -2269,16 +2269,20 @@ async function handleRotateServicePassword(credential, serviceIndex) {
 
         // v=195: Promoted-Service Logic
         // We inject the service target into the 'notes' field and top-level username
+        // v=203: Exhaustive payload mapping to ensure backend identifies the correct target user
         const payload = {
             host: credential.host,
-            username: svc.username, // Target user for passwd
-            service_username: svc.username, // Alias for backend
+            username: svc.username, // Primary target user
+            user: svc.username, // Alias
+            target_user: svc.username, // Alias
+            target_username: svc.username, // Alias
+            service_username: svc.username, // Alias
             new_password: generatedPass,
             
             ssh_user: ssh_user,
-            ssh_username: ssh_user, // Alias
+            ssh_username: ssh_user,
             ssh_pass: ssh_pass,
-            ssh_key_pass: ssh_pass, // Alias for encrypted keys
+            ssh_key_pass: ssh_pass,
             ssh_key: ssh_key,
             root_pass: (credential.username === 'root') ? credential.password : (credential.root_pass || credential.password),
             

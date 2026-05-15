@@ -34,7 +34,7 @@
             </div>
 
             <div style="margin-top:10px; text-align:center;">
-                <button type="button" id="btnEmergencyFix" style="background:#e67e22; color:white; border:none; padding:8px 15px; border-radius:4px; font-size:12px; cursor:pointer; width:100%; font-weight:bold;">BUSCAR ID CORRUPTO</button>
+                <button type="button" id="btnEmergencyFix" style="background:#e67e22; color:white; border:none; padding:8px 15px; border-radius:4px; font-size:12px; cursor:pointer; width:100%; font-weight:bold;">SEARCH CORRUPT ID</button>
                 <div id="corruptIdDisplay" style="margin-top:10px; font-size:14px; font-weight:bold; color:#e74c3c;"></div>
             </div>
 
@@ -107,7 +107,6 @@
             <div class="header-left">
                 <h1 style="display:flex; align-items:center; gap:10px;">
                     Kristoff 
-                    <span style="font-size:12px; background:#e67e22; color:white; padding:2px 8px; border-radius:12px; font-weight:normal;">v195</span>
                 </h1>
             </div>
             <div class="header-right">
@@ -150,6 +149,18 @@
                             <button id="addCompanyBtn" class="btn-add-small" title="Add Company">+</button>
                         </div>
                         <div id="companiesList" class="tree-list"></div>
+                    </div>
+
+                    <div class="sidebar-section" id="branchesSection" style="display: none;">
+                        <div class="section-header">
+                            <h3>Branches <span id="branchCountTotal" style="font-size:11px; font-weight:normal; color:#bdc3c7;"></span></h3>
+                            <button id="addBranchBtn" class="btn-add-small" title="Add Branch">+</button>
+                        </div>
+                        <div id="branchesList" class="tree-list"></div>
+                    </div>
+
+                    <div id="setupGuideMessage" style="display:none; padding:10px; margin:10px; background:rgba(230, 126, 34, 0.1); border-left:3px solid #e67e22; border-radius:4px; font-size:11px; color:#e67e22;">
+                        <i class="fas fa-info-circle"></i> You must first create your company and branch.
                     </div>
 
                     <!-- Personal Section -->
@@ -212,14 +223,6 @@
                         </div>
                     </div>
                     
-                    <div class="sidebar-section" id="branchesSection" style="display: none;">
-                        <div class="section-header">
-                            <h3>Branches <span id="branchCountTotal" style="font-size:11px; font-weight:normal; color:#bdc3c7;"></span></h3>
-                            <button id="addBranchBtn" class="btn-add-small" title="Add Branch">+</button>
-                        </div>
-                        <div id="branchesList" class="tree-list"></div>
-                    </div>
-
                     <div class="sidebar-section" id="adminBulkSection" style="display:none; padding:10px;">
                         <button onclick="deleteAllInCurrentView()" class="btn-secondary" style="width:100%; background:#c0392b; color:white; border:none; font-size:11px; padding:6px; cursor:pointer;" id="btnDeleteAll">⚠️ Delete All in View</button>
                     </div>
@@ -605,13 +608,13 @@
             return false;
         };
     </script>
-    <script src="modules/state.js?v=200"></script>
-    <script src="modules/dom.js?v=200"></script>
-    <script src="modules/toast.js?v=200"></script>
-    <script src="modules/utils.js?v=200"></script>
-    <script src="modules/sharing.js?v=200"></script>
-    <script src="modules/credentials.js?v=200"></script>
-    <script src="app.js?v=200"></script>
+    <script src="modules/state.js?v=203"></script>
+    <script src="modules/dom.js?v=203"></script>
+    <script src="modules/toast.js?v=203"></script>
+    <script src="modules/utils.js?v=203"></script>
+    <script src="modules/sharing.js?v=203"></script>
+    <script src="modules/credentials.js?v=203"></script>
+    <script src="app.js?v=203"></script>
     <script>
         window.addEventListener('DOMContentLoaded', () => {
             // Attempt immediate init
