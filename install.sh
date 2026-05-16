@@ -8,6 +8,16 @@ ADMIN_EMAIL='admin@admin.com'
 ADMIN_PASS='admin12345'
 APP_PORT=8000 # Internal port for Uvicorn
 echo '>>> Starting V5 (Self-Contained)...'
+
+echo ">>> Configuring System Timezone (America/Bogota)..."
+timedatectl set-timezone America/Bogota || true
+if command -v yum >/dev/null 2>&1; then
+    echo ">>> Enabling NTP synchronization (Chrony)..."
+    yum install -y chrony >/dev/null 2>&1 || true
+    systemctl enable --now chronyd >/dev/null 2>&1 || true
+fi
+date
+
 setsebool -P httpd_can_network_connect 1 || true
 dnf install -y oracle-epel-release-el9
 dnf install -y python39 python3-pip python3-devel gcc libffi-devel openssl-devel git firewalld postgresql-server postgresql-contrib nginx certbot python3-certbot-nginx -y
