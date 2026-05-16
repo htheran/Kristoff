@@ -88,12 +88,17 @@ window.hasPermission = function(cred, perm) {
     if (foundUserEntry) return hasPermInModular;
 
     // If no explicit entry for this user, use defaults
-    if (perm === 'deploy') {
-        if (isAdmin) return true;
+    if (perm === 'edit') {
+        if (isOwner || isAdmin) return true;
+        return (cred.permission_level === 'all' || cred.permission_level === 'share' || cred.permission_level === 'edit');
+    }
+
+    if (perm === 'deploy' || perm === 'rotate') {
+        if (isAdmin || isOwner) return true;
         return cred.permission_level === 'all';
     }
     if (perm === 'share') {
-        if (isOwner) return true; // Owners can share by default
+        if (isOwner || isAdmin) return true; 
         return (cred.permission_level === 'all' || cred.permission_level === 'share');
     }
     
@@ -373,7 +378,7 @@ window.renderCredentials = function(credentials) {
                             <button class="btn-action-new btn-deploy-key" style="width:32px; height:32px; border:none; background:#2980b9; color:#fff; border-radius:4px; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Deploy SSH Key">\uD83D\uDD11</button>
                         ` : ''}
                         ${canShare ? `<button class="btn-action-new btn-share" style="padding:6px 12px; border:1px solid #dcdde1; background:#fff; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer;">Share</button>` : ''}
-                        ${isOwner ? `<button class="btn-action-new btn-edit" style="width:32px; height:32px; border:none; background:#f39c12; color:#fff; border-radius:4px; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Edit">\u270E</button>` : ''}
+                        ${(isOwner || window.hasPermission(cred, 'edit')) ? `<button class="btn-action-new btn-edit" style="width:32px; height:32px; border:none; background:#f39c12; color:#fff; border-radius:4px; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Edit">\u270E</button>` : ''}
                     </div>
                 </div>
             </div>
