@@ -260,6 +260,7 @@ function showApp() {
         if (_exportBtn) _exportBtn.style.display = 'inline-flex';
     }
     
+    renderPpkProfiles(); // v=204: Ensure PPK keys are listed after login
     check2FAAndEnforce(isAdmin);
     
     updateUserInfoDisplay();
@@ -2177,6 +2178,8 @@ async function handleRotatePassword(credential) {
             }
         }
 
+        const clean_ssh_pass = ssh_pass && ssh_pass !== '******' ? ssh_pass : null;
+
         const payload = {
             host: credential.host,
             username: credential.username,
@@ -2186,8 +2189,8 @@ async function handleRotatePassword(credential) {
             root_pass: (credential.username === 'root') ? credential.password : (credential.root_pass || credential.password),
             ssh_user: ssh_user || null,
             ssh_username: ssh_user || null, // Alias for backend compatibility
-            ssh_pass: ssh_pass || null,
-            ssh_key_pass: ssh_pass || null, // Alias for encrypted keys
+            ssh_pass: ssh_key ? null : clean_ssh_pass,
+            ssh_key_pass: ssh_key ? clean_ssh_pass : null,
             ssh_key: ssh_key || null
         };
         
@@ -2269,6 +2272,8 @@ async function handleRotateServicePassword(credential, serviceIndex) {
             }
         }
 
+        const clean_ssh_pass = ssh_pass && ssh_pass !== '******' ? ssh_pass : null;
+
         // v=195: Promoted-Service Logic
         // We inject the service target into the 'notes' field and top-level username
         // v=203: Exhaustive payload mapping to ensure backend identifies the correct target user
@@ -2283,10 +2288,10 @@ async function handleRotateServicePassword(credential, serviceIndex) {
             
             ssh_user: ssh_user,
             ssh_username: ssh_user,
-            ssh_pass: ssh_pass,
-            ssh_key_pass: ssh_pass,
+            ssh_pass: ssh_key ? null : clean_ssh_pass,
+            ssh_key_pass: ssh_key ? clean_ssh_pass : null,
             ssh_key: ssh_key,
-            root_pass: (credential.username === 'root') ? credential.password : (credential.root_pass || credential.password),
+            root_pass: credential.root_pass || (credential.username === 'root' ? credential.password : null),
             
             rotation_target: 'service',
             service_id: svc.id,

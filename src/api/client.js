@@ -355,8 +355,9 @@ const client = {
                             humanMessage += `GROUP ROTATION by ${currentEmail || 'User'}: Triggered for group [${groupName}]${rotSummary}.`;
                         } else {
                             const host = payload.host || 'N/A';
-                            const user = payload.username || payload.service_username || 'N/A';
-                            humanMessage += `ROTATION by ${currentEmail || 'User'}: Attempted for ${user}@${host}.`;
+                        const user = payload.ssh_user || payload.ssh_username || payload.username || payload.service_username || 'N/A';
+                        const targetUser = payload.target_user || payload.service_username || payload.username || 'N/A';
+                        humanMessage += `ROTATION by ${currentEmail || 'User'}: SSH login attempted as ${user}@${host}, service target ${targetUser}.`;
                         }
                     } else if (isDeploy) {
                         const payload = l.payload || {};
