@@ -87,6 +87,12 @@ patch_file('app/routers/credentials.py', [
     ('return CredentialRead.model_validate(credential, from_attributes=True)', 'return credential'),
     ('@router.delete(\"/groups/predefined/{name}\")\ndef delete_predefined_group(name: str, db: Session = Depends(get_db)):\n    from sqlalchemy import text\n    db.execute(text(\"DELETE FROM predefined_groups WHERE name = :name\"), {\"name\": name})\n    db.commit()\n    return {\"success\": True}', '')
 ])
+
+# v204: Patch backup_service timezone crash
+patch_file('app/services/backup_service.py', [
+    ('trigger=CronTrigger(hour=self.settings.backup_daily_hour, minute=self.settings.backup_daily_minute)', 'trigger=CronTrigger(hour=self.settings.backup_daily_hour, minute=self.settings.backup_daily_minute, timezone=\"UTC\")'),
+    ('minute=self.settings.backup_weekly_minute,', 'minute=self.settings.backup_weekly_minute, timezone=\"UTC\",')
+])
 "
 
 python3.9 -m venv $VENV_PATH
