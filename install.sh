@@ -107,6 +107,13 @@ systemctl daemon-reload
 systemctl stop kristoff || true
 systemctl enable --now kristoff
 
+echo '>>> Configuring automatic expiration (Crontab)...'
+# Setup cron job to run every 5 minutes using the virtualenv python
+CRON_JOB="*/5 * * * * $VENV_PATH/bin/python3 $PROJECT_ROOT/expiry_job.py >> /var/log/kristoff_expiry.log 2>&1"
+(crontab -l 2>/dev/null | grep -v "expiry_job.py"; echo "$CRON_JOB") | crontab -
+touch /var/log/kristoff_expiry.log
+chmod 644 /var/log/kristoff_expiry.log
+
 mkdir -p /etc/nginx/ssl /etc/nginx/conf.d
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/ssl/kristoff.key -out /etc/nginx/ssl/kristoff.crt -subj "/C=US/ST=State/L=City/O=Kristoff/OU=IT/CN=localhost"
 cat <<EOF > /etc/nginx/conf.d/kristoff.conf
