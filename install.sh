@@ -35,26 +35,31 @@ EOF_CODE
 tar -xzf code.tar.gz
 rm code.tar.gz
 
-echo '>>> Applying hardened rotation patches...'
+echo '>>> Applying hardened rotation and permission patches...'
 python3 -c "
 import os
-p = 'app/services/credential_service.py'
-if os.path.exists(p):
-    with open(p, 'r') as f: content = f.read()
-    if 'from pathlib import Path' not in content:
-        content = 'from pathlib import Path\n' + content
-    # Patch 1: Root priority logic
-    old1 = 'elif credential.root_pass:'
-    new1 = 'elif credential.username == \"root\":\n            root_pass = decrypt_credential_password(credential.password_encrypted)\n            root_pass_source = \"credential.password_encrypted (root priority)\"\n        elif credential.root_pass:'
-    if old1 in content and '(root priority)' not in content:
-        content = content.replace(old1, new1)
-    # Patch 2: Ignore stale payload.root_pass
-    old2 = 'if payload.root_pass:'
-    new2 = 'if payload.root_pass and credential.username != \"root\":'
-    if old2 in content and 'username != \"root\"' not in content:
-        content = content.replace(old2, new2)
-    with open(p, 'w') as f: f.write(content)
-    print('Patches applied successfully to credential_service.py')
+def patch_file(path, replacements):
+    if not os.path.exists(path): return
+    with open(path, 'r') as f: c = f.read()
+    for old, new in replacements:
+        if old in c and new.split('\n')[0] not in c:
+            c = c.replace(old, new)
+    with open(path, 'w') as f: f.write(c)
+
+# Patch credential_service.py
+patch_file('app/services/credential_service.py', [
+    ('from app.models.activity_log import ActivityEventType', 'from app.models.activity_log import ActivityEventType\nfrom pathlib import Path'),
+    ('ActivityLogService(self.db).log(ActivityEventType.DELETE_CREDENTIAL, True, current_user.id, f\"Eliminada credencial: {name} (ID: {credential_id})\")\n\n    ', 'ActivityLogService(self.db).log(ActivityEventType.DELETE_CREDENTIAL, True, current_user.id, f\"Eliminada credencial: {name} (ID: {credential_id})\")\n\n    def _verify_permission(self, credential_id: int, user: User, required_level: str) -> bool:\n        if user.is_admin: return True\n        from app.models.credential import Credential\n        cred = self.db.scalar(select(Credential).where(Credential.id == credential_id))\n        if not cred: return False\n        if cred.created_by == user.id: return True\n        from app.models.shared_credential import SharedCredential\n        share = self.db.scalar(select(SharedCredential).where(SharedCredential.credential_id == credential_id, SharedCredential.to_user_id == user.id))\n        if not share: return False\n        levels = {\"read\": 0, \"edit\": 1, \"share\": 2, \"all\": 3}\n        return levels.get(share.permission_level, 0) >= levels.get(required_level, 0)\n\n    '),
+    ('def update_credential(self, company_id: int, credential_id: int, payload: CredentialUpdate, current_user: User) -> Credential:\n        stmt = select(Credential).options(selectinload(Credential.services)).where(Credential.id == credential_id)\n        credential = self.db.scalar(stmt)\n        if not credential: raise ValueError(\"Credencial no encontrada\")\n        if not current_user.is_admin and credential.created_by != current_user.id:', 'def update_credential(self, company_id: int, credential_id: int, payload: CredentialUpdate, current_user: User) -> Credential:\n        if not self._verify_permission(credential_id, current_user, \"edit\"): raise PermissionError(\"No tienes permisos suficientes (Nivel EDIT requerido)\")\n        stmt = select(Credential).options(selectinload(Credential.services)).where(Credential.id == credential_id)\n        credential = self.db.scalar(stmt)\n        if not credential: raise ValueError(\"Credencial no encontrada\")\n        if False: # Replaced by _verify_permission'),
+    ('def rotate_password(self, company_id: int, credential_id: int, current_user: User, payload: CredentialRotate):\n        stmt = select(Credential).options(selectinload(Credential.services)).where(Credential.id == credential_id)\n        credential = self.db.scalar(stmt)\n        if not credential: raise ValueError(\"Credencial no encontrada\")', 'def rotate_password(self, company_id: int, credential_id: int, current_user: User, payload: CredentialRotate):\n        if not self._verify_permission(credential_id, current_user, \"all\"): raise PermissionError(\"No tienes permisos suficientes (Nivel ALL requerido)\")\n        stmt = select(Credential).options(selectinload(Credential.services)).where(Credential.id == credential_id)\n        credential = self.db.scalar(stmt)\n        if not credential: raise ValueError(\"Credencial no encontrada\")'),
+    ('if payload.root_pass:', 'if payload.root_pass and credential.username != \"root\":'),
+    ('elif credential.root_pass:', 'elif credential.username == \"root\":\n            root_pass = decrypt_credential_password(credential.password_encrypted)\n            root_pass_source = \"credential.password_encrypted (root priority)\"\n        elif credential.root_pass:')
+])
+
+# Patch shared_credential_service.py
+patch_file('app/services/shared_credential_service.py', [
+    ('if not self._can_manage(company_id, current_user):\n            raise PermissionError(\"Solo administradores pueden prestar credenciales\")', 'can_share = False\n        if current_user.is_admin or credential.created_by == current_user.id: can_share = True\n        else:\n            my_share = self.db.scalar(select(SharedCredential).where(SharedCredential.credential_id == credential_id, SharedCredential.to_user_id == current_user.id))\n            if my_share and my_share.permission_level in [\"share\", \"all\"]: can_share = True\n        if not can_share: raise PermissionError(\"No tienes permisos suficientes (Nivel SHARE requerido)\")')
+])
 "
 
 python3.9 -m venv $VENV_PATH
