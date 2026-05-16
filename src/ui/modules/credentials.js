@@ -324,8 +324,23 @@ window.renderCredentials = function(credentials) {
         const canShare = window.hasPermission(cred, 'share');
         
         const safeName = (cred.name || '').replace(/</g, '&lt;');
-        const sharedWithYouBadge = cred.permission_level ? `<span style="font-size:10px; background:#9b59b6; color:white; padding:1px 4px; border-radius:3px; margin-left:5px; vertical-align:middle;">SHARED WITH YOU</span>` : '';
+        
+        // v204: Semantic Permission Badges
+        let permBadge = '';
+        if (cred.permission_level) {
+            const level = cred.permission_level.toLowerCase();
+            let cls = 'perm-read';
+            let label = 'Read Only';
+            
+            if (level === 'edit') { cls = 'perm-edit'; label = 'Edit'; }
+            else if (level === 'share') { cls = 'perm-share'; label = 'Share'; }
+            else if (level === 'all') { cls = 'perm-all'; label = 'Full Access'; }
+            
+            permBadge = `<span class="perm-badge ${cls}" style="margin-left:8px; vertical-align:middle;">${label}</span>`;
+        }
+        
         const safeUser = (cred.username || '').replace(/</g, '&lt;');
+
         const groupLabel = cred.group_name ? `<span class="card-meta-group" style="font-size:11px;background:#eef2f5;padding:2px 6px;border-radius:10px;margin-left:8px">${cred.group_name}</span>` : '';
         const servicesLabel = (services.length > 0) ? `<span style="font-size:11px;background:#e8f4fd;color:#2980b9;padding:2px 6px;border-radius:10px;margin-left:8px">${services.length} services</span>` : '';
 
@@ -348,7 +363,7 @@ window.renderCredentials = function(credentials) {
             <div class="card-compact">
                 <div class="card-header" style="display:flex; align-items:center;">
                     <div class="card-expand-icon" data-action="toggle-expand" style="width:20px; font-size:10px;">${isSelected ? '&#9660;' : '\u25B6'}</div>
-                    <div class="card-name" style="font-weight:600; font-size:15px;">${safeName}${sharedWithYouBadge}</div>
+                    <div class="card-name" style="font-weight:600; font-size:15px;">${safeName}${permBadge}</div>
                     <div style="display:flex; gap:5px; margin-left:8px;">${groupLabel}${servicesLabel}</div>
                     <div style="margin-left:auto;">
                         ${deleteBtnHtml}
