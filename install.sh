@@ -75,13 +75,18 @@ patch_file('app/services/shared_credential_service.py', [
 
 # v204: Patch SharedCredentialAccessRead schema
 patch_file('app/schemas/shared_credential.py', [
-    ('os: Optional[str]\n    group_id: Optional[int]', 'group_name: Optional[str]')
+    ('os: Optional[str]\n    group_id: Optional[int]', 'group_name: Optional[str]'),
+    ('expires_at: Optional[datetime] = None\n    shared_scope: Optional[str] = \'os\'', 'expires_at: Optional[datetime] = None\n    permission_level: str = \"read\"\n    shared_scope: Optional[str] = \'os\''),
+    ('expires_at: Optional[datetime] = None\n    shared_scope: Optional[str] = \'os\'', 'expires_at: Optional[datetime] = None\n    permission_level: Optional[str] = None\n    shared_scope: Optional[str] = \'os\''),
+    ('can_save: bool\n    expires_at: Optional[datetime]', 'can_save: bool\n    permission_level: str\n    expires_at: Optional[datetime]')
 ])
 
 # v204: Patch shared_credentials router
 patch_file('app/routers/shared_credentials.py', [
     ('os=credential.os,\n            group_id=credential.group_id,', 'group_name=credential.group_name,'),
-    ('os=credential.os,\n        group_id=credential.group_id,', 'group_name=credential.group_name,')
+    ('os=credential.os,\n        group_id=credential.group_id,', 'group_name=credential.group_name,'),
+    ('can_save=share.can_save,\n            expires_at=share.expires_at,', 'can_save=share.can_save,\n            permission_level=share.permission_level,\n            expires_at=share.expires_at,'),
+    ('can_save=share.can_save,\n        expires_at=share.expires_at,', 'can_save=share.can_save,\n        permission_level=share.permission_level,\n        expires_at=share.expires_at,')
 ])
 
 # v204: Patch credentials router (duplicates and return type)
