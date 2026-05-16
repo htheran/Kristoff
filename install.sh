@@ -70,6 +70,23 @@ patch_file('app/services/credential_service.py', [
 patch_file('app/services/shared_credential_service.py', [
     ('if not self._can_manage(company_id, current_user):\n            raise PermissionError(\"Solo administradores pueden prestar credenciales\")', 'can_share = False\n        if current_user.is_admin or credential.created_by == current_user.id: can_share = True\n        else:\n            my_share = self.db.scalar(select(SharedCredential).where(SharedCredential.credential_id == credential_id, SharedCredential.to_user_id == current_user.id))\n            if my_share and my_share.permission_level in [\"share\", \"all\"]: can_share = True\n        if not can_share: raise PermissionError(\"No tienes permisos suficientes (Nivel SHARE requerido)\")')
 ])
+
+# v204: Patch SharedCredentialAccessRead schema
+patch_file('app/schemas/shared_credential.py', [
+    ('os: Optional[str]\n    group_id: Optional[int]', 'group_name: Optional[str]')
+])
+
+# v204: Patch shared_credentials router
+patch_file('app/routers/shared_credentials.py', [
+    ('os=credential.os,\n            group_id=credential.group_id,', 'group_name=credential.group_name,'),
+    ('os=credential.os,\n        group_id=credential.group_id,', 'group_name=credential.group_name,')
+])
+
+# v204: Patch credentials router (duplicates and return type)
+patch_file('app/routers/credentials.py', [
+    ('return CredentialRead.model_validate(credential, from_attributes=True)', 'return credential'),
+    ('@router.delete(\"/groups/predefined/{name}\")\ndef delete_predefined_group(name: str, db: Session = Depends(get_db)):\n    from sqlalchemy import text\n    db.execute(text(\"DELETE FROM predefined_groups WHERE name = :name\"), {\"name\": name})\n    db.commit()\n    return {\"success\": True}', '')
+])
 "
 
 python3.9 -m venv $VENV_PATH
