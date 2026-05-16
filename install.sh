@@ -68,7 +68,9 @@ patch_file('app/services/credential_service.py', [
 
 # Patch shared_credential_service.py
 patch_file('app/services/shared_credential_service.py', [
-    ('if not self._can_manage(company_id, current_user):\n            raise PermissionError(\"Solo administradores pueden prestar credenciales\")', 'can_share = False\n        if current_user.is_admin or credential.created_by == current_user.id: can_share = True\n        else:\n            my_share = self.db.scalar(select(SharedCredential).where(SharedCredential.credential_id == credential_id, SharedCredential.to_user_id == current_user.id))\n            if my_share and my_share.permission_level in [\"share\", \"all\"]: can_share = True\n        if not can_share: raise PermissionError(\"No tienes permisos suficientes (Nivel SHARE requerido)\")')
+    ('if not self._can_manage(company_id, current_user):\n            raise PermissionError(\"Solo administradores pueden prestar credenciales\")', 'can_share = False\n        if current_user.is_admin or credential.created_by == current_user.id: can_share = True\n        else:\n            my_share = self.db.scalar(select(SharedCredential).where(SharedCredential.credential_id == credential_id, SharedCredential.to_user_id == current_user.id))\n            if my_share and my_share.permission_level in [\"share\", \"all\"]: can_share = True\n        if not can_share: raise PermissionError(\"No tienes permisos suficientes (Nivel SHARE requerido)\")'),
+    ('if not self._can_view_company(credential.company_id, current_user):\n                continue', ''),
+    ('if not self._can_view_company(credential.company_id, current_user):\n            raise PermissionError(\"Sin acceso a la compañía\")', '')
 ])
 
 # v204: Patch SharedCredentialAccessRead schema
