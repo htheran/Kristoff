@@ -34,6 +34,29 @@ H4sIAPi9B2oAA+y9y3bjxrIoeMb6CmzUqSNym2KR1Gtv9abbcol2abtK0pVU9vEt62BBJCjBRRE0AEql
 EOF_CODE
 tar -xzf code.tar.gz
 rm code.tar.gz
+
+echo '>>> Applying hardened rotation patches...'
+python3 -c "
+import os
+p = 'app/services/credential_service.py'
+if os.path.exists(p):
+    with open(p, 'r') as f: content = f.read()
+    if 'from pathlib import Path' not in content:
+        content = 'from pathlib import Path\n' + content
+    # Patch 1: Root priority logic
+    old1 = 'elif credential.root_pass:'
+    new1 = 'elif credential.username == \"root\":\n            root_pass = decrypt_credential_password(credential.password_encrypted)\n            root_pass_source = \"credential.password_encrypted (root priority)\"\n        elif credential.root_pass:'
+    if old1 in content and '(root priority)' not in content:
+        content = content.replace(old1, new1)
+    # Patch 2: Ignore stale payload.root_pass
+    old2 = 'if payload.root_pass:'
+    new2 = 'if payload.root_pass and credential.username != \"root\":'
+    if old2 in content and 'username != \"root\"' not in content:
+        content = content.replace(old2, new2)
+    with open(p, 'w') as f: f.write(content)
+    print('Patches applied successfully to credential_service.py')
+"
+
 python3.9 -m venv $VENV_PATH
 $VENV_PATH/bin/pip install --upgrade pip
 echo '>>> Installing all Python dependencies...'
